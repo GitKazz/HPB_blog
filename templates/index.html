@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPBブログ自動生成アプリ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>HPBブログ自動生成アプリ</h1>
+        
+        <div class="upload-section">
+            <form id="uploadForm">
+                <div class="file-input-wrapper">
+                    <input type="file" id="imageInput" accept=".jpg,.jpeg,.png" required>
+                    <label for="imageInput" class="file-input-label">
+                        画像を選択
+                    </label>
+                </div>
+                <button type="submit" class="generate-btn">生成する</button>
+            </form>
+        </div>
+
+        <div class="result-section" style="display: none;">
+            <div class="preview-container">
+                <h2>プレビュー</h2>
+                <div class="blog-preview">
+                    <img id="previewImage" src="" alt="プレビュー画像">
+                    <div class="blog-content">
+                        <h3 id="featureText"></h3>
+                        <p id="descriptionText"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="copy-section">
+                <h2>コピー用テキスト</h2>
+                <textarea id="copyText" readonly></textarea>
+                <button id="copyBtn" class="copy-btn">コピーする</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>生成中...</p>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            // ローディング表示
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('error').style.display = 'none';
+            document.querySelector('.result-section').style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // プレビュー表示
+                    document.getElementById('previewImage').src = `data:image/jpeg;base64,${data.image}`;
+                    document.getElementById('featureText').textContent = data.feature;
+                    document.getElementById('descriptionText').textContent = data.description;
+
+                    // コピー用テキスト生成
+                    const copyText = `【${data.feature}】\n\n${data.description}`;
+                    document.getElementById('copyText').value = copyText;
+
+                    // 結果セクション表示
+                    document.querySelector('.result-section').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                document.getElementById('error').textContent = error.message;
+                document.getElementById('error').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        // コピーボタンの機能
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const textarea = document.getElementById('copyText');
+            textarea.select();
+            document.execCommand('copy');
+            alert('コピーしました！');
+        });
+    </script>
+</body>
+</html> 
